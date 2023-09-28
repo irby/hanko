@@ -17,20 +17,21 @@ import (
 
 // Config is the central configuration type
 type Config struct {
-	Server      Server           `yaml:"server" json:"server,omitempty" koanf:"server"`
-	Webauthn    WebauthnSettings `yaml:"webauthn" json:"webauthn,omitempty" koanf:"webauthn"`
-	Passcode    Passcode         `yaml:"passcode" json:"passcode" koanf:"passcode"`
-	Password    Password         `yaml:"password" json:"password,omitempty" koanf:"password"`
-	Database    Database         `yaml:"database" json:"database" koanf:"database"`
-	Secrets     Secrets          `yaml:"secrets" json:"secrets" koanf:"secrets"`
-	Service     Service          `yaml:"service" json:"service" koanf:"service"`
-	Session     Session          `yaml:"session" json:"session,omitempty" koanf:"session"`
-	AuditLog    AuditLog         `yaml:"audit_log" json:"audit_log,omitempty" koanf:"audit_log" split_words:"true"`
-	Emails      Emails           `yaml:"emails" json:"emails,omitempty" koanf:"emails"`
-	RateLimiter RateLimiter      `yaml:"rate_limiter" json:"rate_limiter,omitempty" koanf:"rate_limiter" split_words:"true"`
-	ThirdParty  ThirdParty       `yaml:"third_party" json:"third_party,omitempty" koanf:"third_party" split_words:"true"`
-	Log         LoggerConfig     `yaml:"log" json:"log,omitempty" koanf:"log"`
-	Account     Account          `yaml:"account" json:"account,omitempty" koanf:"account"`
+	Server        Server           `yaml:"server" json:"server,omitempty" koanf:"server"`
+	Webauthn      WebauthnSettings `yaml:"webauthn" json:"webauthn,omitempty" koanf:"webauthn"`
+	Passcode      Passcode         `yaml:"passcode" json:"passcode" koanf:"passcode"`
+	Password      Password         `yaml:"password" json:"password,omitempty" koanf:"password"`
+	Database      Database         `yaml:"database" json:"database" koanf:"database"`
+	Secrets       Secrets          `yaml:"secrets" json:"secrets" koanf:"secrets"`
+	Service       Service          `yaml:"service" json:"service" koanf:"service"`
+	Session       Session          `yaml:"session" json:"session,omitempty" koanf:"session"`
+	AuditLog      AuditLog         `yaml:"audit_log" json:"audit_log,omitempty" koanf:"audit_log" split_words:"true"`
+	Emails        Emails           `yaml:"emails" json:"emails,omitempty" koanf:"emails"`
+	RateLimiter   RateLimiter      `yaml:"rate_limiter" json:"rate_limiter,omitempty" koanf:"rate_limiter" split_words:"true"`
+	ThirdParty    ThirdParty       `yaml:"third_party" json:"third_party,omitempty" koanf:"third_party" split_words:"true"`
+	Log           LoggerConfig     `yaml:"log" json:"log,omitempty" koanf:"log"`
+	Account       Account          `yaml:"account" json:"account,omitempty" koanf:"account"`
+	Notifications Notifications    `yaml:"notifications" json:"notifications,omitempty" koanf:"notifications"`
 }
 
 var (
@@ -143,6 +144,12 @@ func DefaultConfig() *Config {
 		Account: Account{
 			AllowDeletion: false,
 			AllowSignup:   true,
+		},
+		Notifications: Notifications{
+			PasswordUpdate:     false,
+			PrimaryEmailUpdate: false,
+			EmailCreate:        false,
+			PasskeyCreate:      false,
 		},
 	}
 }
@@ -611,6 +618,13 @@ func (p *ThirdPartyProviders) Get(provider string) *ThirdPartyProvider {
 	}
 
 	return nil
+}
+
+type Notifications struct {
+	PasswordUpdate     bool `yaml:"password_update" json:"password_update,omitempty" koanf:"password_update" jsonschema:"default=false"`
+	PrimaryEmailUpdate bool `yaml:"primary_email_update" json:"primary_email_update,omitempty" koanf:"primary_email_update" jsonschema:"default=false"`
+	EmailCreate        bool `yaml:"email_create" json:"email_create,omitempty" koanf:"email_create" jsonschema:"default=false"`
+	PasskeyCreate      bool `yaml:"passkey_create" json:"passkey_create,omitempty" koanf:"passkey_create" jsonschema:"default=false"`
 }
 
 func (c *Config) PostProcess() error {

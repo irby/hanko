@@ -27,3 +27,8 @@ server:
     cors:
       allow_origins:
         - "http://localhost:8888"
+notifications:
+  password_update: true
+  primary_email_update: true
+  email_create: true
+  passkey_create: true
