@@ -18,48 +18,45 @@ import (
 	"github.com/teamhanko/hanko/backend/rate_limiter"
 	"github.com/teamhanko/hanko/backend/session"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/gomail.v2"
 	"net/http"
 	"time"
 )
 
 type PasscodeHandler struct {
-	mailer            mail.Mailer
-	renderer          *mail.Renderer
-	passcodeGenerator crypto.PasscodeGenerator
-	persister         persistence.Persister
-	emailConfig       config.Email
-	serviceConfig     config.Service
-	TTL               int
-	sessionManager    session.Manager
-	cfg               *config.Config
-	auditLogger       auditlog.Logger
-	rateLimiter       limiter.Store
+	passcodeGenerator   crypto.PasscodeGenerator
+	persister           persistence.Persister
+	emailConfig         config.Email
+	serviceConfig       config.Service
+	TTL                 int
+	sessionManager      session.Manager
+	cfg                 *config.Config
+	auditLogger         auditlog.Logger
+	rateLimiter         limiter.Store
+	notificationService *mail.NotificationService
 }
 
 var maxPasscodeTries = 3
 
 func NewPasscodeHandler(cfg *config.Config, persister persistence.Persister, sessionManager session.Manager, mailer mail.Mailer, auditLogger auditlog.Logger) (*PasscodeHandler, error) {
-	renderer, err := mail.NewRenderer()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new renderer: %w", err)
-	}
 	var rateLimiter limiter.Store
 	if cfg.RateLimiter.Enabled {
 		rateLimiter = rate_limiter.NewRateLimiter(cfg.RateLimiter, cfg.RateLimiter.PasscodeLimits)
 	}
+	notificationService, err := mail.NewNotificationService(cfg, mailer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new notification service: %w", err)
+	}
 	return &PasscodeHandler{
-		mailer:            mailer,
-		renderer:          renderer,
-		passcodeGenerator: crypto.NewPasscodeGenerator(),
-		persister:         persister,
-		emailConfig:       cfg.Passcode.Email,
-		serviceConfig:     cfg.Service,
-		TTL:               cfg.Passcode.TTL,
-		sessionManager:    sessionManager,
-		cfg:               cfg,
-		auditLogger:       auditLogger,
-		rateLimiter:       rateLimiter,
+		passcodeGenerator:   crypto.NewPasscodeGenerator(),
+		persister:           persister,
+		emailConfig:         cfg.Passcode.Email,
+		serviceConfig:       cfg.Service,
+		TTL:                 cfg.Passcode.TTL,
+		sessionManager:      sessionManager,
+		cfg:                 cfg,
+		auditLogger:         auditLogger,
+		rateLimiter:         rateLimiter,
+		notificationService: notificationService,
 	}, nil
 }
 
@@ -179,29 +176,15 @@ func (h *PasscodeHandler) Init(c echo.Context) error {
 	}
 
 	durationTTL := time.Duration(h.TTL) * time.Second
-	data := map[string]interface{}{
-		"Code":        passcode,
-		"ServiceName": h.serviceConfig.Name,
-		"TTL":         fmt.Sprintf("%.0f", durationTTL.Minutes()),
+	data := mail.SendPasscodeEmailData{
+		Code:        passcode,
+		ServiceName: h.serviceConfig.Name,
+		TTL:         fmt.Sprintf("%.0f", durationTTL.Minutes()),
 	}
 
-	lang := c.Request().Header.Get("Accept-Language")
-	str, err := h.renderer.Render("loginTextMail", lang, data)
+	err = h.notificationService.SendPasscodeEmail(c, email, data)
 	if err != nil {
-		return fmt.Errorf("failed to render email template: %w", err)
-	}
-
-	message := gomail.NewMessage()
-	message.SetAddressHeader("To", email.Address, "")
-	message.SetAddressHeader("From", h.emailConfig.FromAddress, h.emailConfig.FromName)
-
-	message.SetHeader("Subject", h.renderer.Translate(lang, "email_subject_login", data))
-
-	message.SetBody("text/plain", str)
-
-	err = h.mailer.Send(message)
-	if err != nil {
-		return fmt.Errorf("failed to send passcode: %w", err)
+		return fmt.Errorf("%w", err)
 	}
 
 	err = h.auditLogger.Create(c, models.AuditLogPasscodeLoginInitSucceeded, user, nil)
