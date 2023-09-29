@@ -15,12 +15,6 @@ type NotificationService struct {
 	mailer      Mailer
 }
 
-type SendPasscodeEmailData struct {
-	Code        string
-	ServiceName string
-	TTL         string
-}
-
 func NewNotificationService(cfg *config.Config, mailer Mailer) (*NotificationService, error) {
 	renderer, err := NewRenderer()
 	if err != nil {
@@ -33,20 +27,41 @@ func NewNotificationService(cfg *config.Config, mailer Mailer) (*NotificationSer
 	}, nil
 }
 
+type SendPasscodeEmailData struct {
+	Code        string
+	ServiceName string
+	TTL         string
+}
+
 func (m *NotificationService) SendPasscodeEmail(c echo.Context, toEmail *models.Email, data SendPasscodeEmailData) error {
+	var passcodeEmailProps = EmailProps{
+		ToEmail:         toEmail.Address,
+		SubjectTemplate: "email_subject_login",
+		BodyTemplate:    "loginTextMail",
+	}
+	return m.sendEmail(c, passcodeEmailProps, data)
+}
+
+type EmailProps struct {
+	ToEmail         string
+	SubjectTemplate string
+	BodyTemplate    string
+}
+
+func (m *NotificationService) sendEmail(c echo.Context, props EmailProps, data interface{}) error {
 	lang := c.Request().Header.Get("Accept-Language")
-	str, err := m.renderer.Render("loginTextMail", lang, structs.Map(data))
+	body, err := m.renderer.Render(props.BodyTemplate, lang, structs.Map(data))
 	if err != nil {
 		return fmt.Errorf("failed to render email template: %w", err)
 	}
 
 	message := gomail.NewMessage()
-	message.SetAddressHeader("To", toEmail.Address, "")
+	message.SetAddressHeader("To", props.ToEmail, "")
 	message.SetAddressHeader("From", m.emailConfig.FromAddress, m.emailConfig.FromName)
 
-	message.SetHeader("Subject", m.renderer.Translate(lang, "email_subject_login", structs.Map(data)))
+	message.SetHeader("Subject", m.renderer.Translate(lang, props.SubjectTemplate, structs.Map(data)))
 
-	message.SetBody("text/plain", str)
+	message.SetBody("text/plain", body)
 
 	err = m.mailer.Send(message)
 	if err != nil {
