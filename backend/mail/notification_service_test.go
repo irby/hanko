@@ -32,7 +32,7 @@ func (s *notificationServiceSuite) TestNotificationService_SendPasscodeEmail() {
 	service := s.getService()
 	testContext := s.generateTestContext()
 	testEmail := models.Email{
-		Address: "test@example.com",
+		Address: "test.sendpasscode@example.com",
 	}
 	testData := SendPasscodeEmailData{
 		Code:        "12345",
@@ -40,7 +40,8 @@ func (s *notificationServiceSuite) TestNotificationService_SendPasscodeEmail() {
 	}
 	err := service.SendPasscodeEmail(testContext, &testEmail, testData)
 	s.NoError(err)
-	subject := s.getLastEmailSubject()
+	toAddress, subject := s.getLastEmailToAddressAndSubject()
+	s.Equal(testEmail.Address, toAddress)
 	s.Equal(s.translate(service, "email_subject_login", testData), subject)
 }
 
@@ -61,13 +62,17 @@ func (s *notificationServiceSuite) generateTestContext() echo.Context {
 	return e.NewContext(req, rec)
 }
 
-func (s *notificationServiceSuite) getLastEmailSubject() string {
+func (s *notificationServiceSuite) getLastEmailToAddressAndSubject() (string, string) {
 	messages := s.EmailServer.Messages()
 	lastMessage := messages[len(messages)-1]
-	subject := regexp.MustCompile("Subject: (.*)\r")
-	matchTo := subject.FindStringSubmatch(lastMessage.MsgRequest())
 
-	return matchTo[1]
+	subject := regexp.MustCompile("Subject: (.*)\r")
+	subjectMatchTo := subject.FindStringSubmatch(lastMessage.MsgRequest())
+
+	toAddress := regexp.MustCompile("To: (.*)\r")
+	toAddressMatchTo := toAddress.FindStringSubmatch(lastMessage.MsgRequest())
+
+	return toAddressMatchTo[1], subjectMatchTo[1]
 }
 
 func (s *notificationServiceSuite) translate(service *NotificationService, messageId string, data interface{}) string {
