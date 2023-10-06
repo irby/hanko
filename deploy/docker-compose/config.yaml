@@ -27,8 +27,17 @@ server:
     cors:
       allow_origins:
         - "http://localhost:8888"
-notifications:
-  password_update: true
-  primary_email_update: true
-  email_create: true
-  passkey_create: true
+security_notifications:
+  notifications:
+    password_update:
+      enabled: true
+    primary_email_update:
+      enabled: true
+    email_create:
+      enabled: true
+    passkey_create:
+      enabled: true
+  from_email:
+    from_address: security@hanko.io
+    from_name: Hanko Account Security
+  notify_address: helpdesk@hanko.io

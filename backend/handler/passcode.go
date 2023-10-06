@@ -177,9 +177,8 @@ func (h *PasscodeHandler) Init(c echo.Context) error {
 
 	durationTTL := time.Duration(h.TTL) * time.Second
 	data := mail.SendPasscodeEmailData{
-		Code:        passcode,
-		ServiceName: h.serviceConfig.Name,
-		TTL:         fmt.Sprintf("%.0f", durationTTL.Minutes()),
+		Code: passcode,
+		TTL:  fmt.Sprintf("%.0f", durationTTL.Minutes()),
 	}
 
 	err = h.notificationService.SendPasscodeEmail(c, email, data)

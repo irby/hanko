@@ -20,10 +20,10 @@ func TestDefaultConfigAccountParameters(t *testing.T) {
 	assert.Equal(t, cfg.Account.AllowDeletion, false)
 	assert.Equal(t, cfg.Account.AllowSignup, true)
 
-	assert.Equal(t, cfg.Notifications.PasswordUpdate, false)
-	assert.Equal(t, cfg.Notifications.PrimaryEmailUpdate, false)
-	assert.Equal(t, cfg.Notifications.EmailCreate, false)
-	assert.Equal(t, cfg.Notifications.PasskeyCreate, false)
+	assert.Equal(t, cfg.SecurityNotifications.Notifications.PasswordUpdate.Enabled, false)
+	assert.Equal(t, cfg.SecurityNotifications.Notifications.PrimaryEmailUpdate.Enabled, false)
+	assert.Equal(t, cfg.SecurityNotifications.Notifications.EmailCreate.Enabled, false)
+	assert.Equal(t, cfg.SecurityNotifications.Notifications.PasskeyCreate.Enabled, false)
 }
 
 func TestParseValidConfig(t *testing.T) {
