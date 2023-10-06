@@ -30,14 +30,10 @@ type PasswordHandler struct {
 	notificationService *mail.NotificationService
 }
 
-func NewPasswordHandler(persister persistence.Persister, sessionManager session.Manager, cfg *config.Config, auditLogger auditlog.Logger, mailer mail.Mailer) (*PasswordHandler, error) {
+func NewPasswordHandler(persister persistence.Persister, sessionManager session.Manager, cfg *config.Config, auditLogger auditlog.Logger, notificationService *mail.NotificationService) (*PasswordHandler, error) {
 	var rateLimiter limiter.Store
 	if cfg.RateLimiter.Enabled {
 		rateLimiter = rate_limiter.NewRateLimiter(cfg.RateLimiter, cfg.RateLimiter.PasswordLimits)
-	}
-	notificationService, err := mail.NewNotificationService(cfg, mailer)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new notification service: %w", err)
 	}
 	return &PasswordHandler{
 		persister:           persister,

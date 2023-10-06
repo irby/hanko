@@ -10,6 +10,7 @@ import (
 	auditlog "github.com/teamhanko/hanko/backend/audit_log"
 	"github.com/teamhanko/hanko/backend/config"
 	"github.com/teamhanko/hanko/backend/dto"
+	"github.com/teamhanko/hanko/backend/mail"
 	"github.com/teamhanko/hanko/backend/persistence"
 	"github.com/teamhanko/hanko/backend/persistence/models"
 	"github.com/teamhanko/hanko/backend/session"
@@ -18,18 +19,20 @@ import (
 )
 
 type EmailHandler struct {
-	persister      persistence.Persister
-	cfg            *config.Config
-	sessionManager session.Manager
-	auditLogger    auditlog.Logger
+	persister           persistence.Persister
+	cfg                 *config.Config
+	sessionManager      session.Manager
+	auditLogger         auditlog.Logger
+	notificationService *mail.NotificationService
 }
 
-func NewEmailHandler(cfg *config.Config, persister persistence.Persister, sessionManager session.Manager, auditLogger auditlog.Logger) (*EmailHandler, error) {
+func NewEmailHandler(cfg *config.Config, persister persistence.Persister, sessionManager session.Manager, auditLogger auditlog.Logger, notificationService *mail.NotificationService) (*EmailHandler, error) {
 	return &EmailHandler{
-		persister:      persister,
-		cfg:            cfg,
-		sessionManager: sessionManager,
-		auditLogger:    auditLogger,
+		persister:           persister,
+		cfg:                 cfg,
+		sessionManager:      sessionManager,
+		auditLogger:         auditLogger,
+		notificationService: notificationService,
 	}, nil
 }
 
@@ -136,6 +139,11 @@ func (h *EmailHandler) Create(c echo.Context) error {
 		err = h.auditLogger.CreateWithConnection(tx, c, models.AuditLogEmailCreated, user, nil)
 		if err != nil {
 			return fmt.Errorf("failed to create audit log: %w", err)
+		}
+
+		err = h.notificationService.SendEmailCreateEmail(c, user.Emails.GetPrimary())
+		if err != nil {
+			return fmt.Errorf("failed to send email create email: %w", err)
 		}
 
 		return c.JSON(http.StatusOK, email)

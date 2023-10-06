@@ -37,14 +37,10 @@ type PasscodeHandler struct {
 
 var maxPasscodeTries = 3
 
-func NewPasscodeHandler(cfg *config.Config, persister persistence.Persister, sessionManager session.Manager, mailer mail.Mailer, auditLogger auditlog.Logger) (*PasscodeHandler, error) {
+func NewPasscodeHandler(cfg *config.Config, persister persistence.Persister, sessionManager session.Manager, notificationService *mail.NotificationService, auditLogger auditlog.Logger) (*PasscodeHandler, error) {
 	var rateLimiter limiter.Store
 	if cfg.RateLimiter.Enabled {
 		rateLimiter = rate_limiter.NewRateLimiter(cfg.RateLimiter, cfg.RateLimiter.PasscodeLimits)
-	}
-	notificationService, err := mail.NewNotificationService(cfg, mailer)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new notification service: %w", err)
 	}
 	return &PasscodeHandler{
 		passcodeGenerator:   crypto.NewPasscodeGenerator(),

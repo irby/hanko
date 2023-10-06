@@ -72,11 +72,15 @@ func NewPublicRouter(cfg *config.Config, persister persistence.Persister, promet
 	if err != nil {
 		panic(fmt.Errorf("failed to create mailer: %w", err))
 	}
+	notificationService, err := mail.NewNotificationService(cfg, mailer)
+	if err != nil {
+		panic(fmt.Errorf("failed to create notification service: %w", err))
+	}
 
 	auditLogger := auditlog.NewLogger(persister, cfg.AuditLog)
 
 	if cfg.Password.Enabled {
-		passwordHandler, err := NewPasswordHandler(persister, sessionManager, cfg, auditLogger, mailer)
+		passwordHandler, err := NewPasswordHandler(persister, sessionManager, cfg, auditLogger, notificationService)
 		if err != nil {
 			panic(fmt.Errorf("failed to create password handler: %w", err))
 		}
@@ -108,7 +112,7 @@ func NewPublicRouter(cfg *config.Config, persister persistence.Persister, promet
 	if err != nil {
 		panic(fmt.Errorf("failed to create public webauthn handler: %w", err))
 	}
-	passcodeHandler, err := NewPasscodeHandler(cfg, persister, sessionManager, mailer, auditLogger)
+	passcodeHandler, err := NewPasscodeHandler(cfg, persister, sessionManager, notificationService, auditLogger)
 	if err != nil {
 		panic(fmt.Errorf("failed to create public passcode handler: %w", err))
 	}
@@ -125,7 +129,7 @@ func NewPublicRouter(cfg *config.Config, persister persistence.Persister, promet
 	wellKnown.GET("/jwks.json", wellKnownHandler.GetPublicKeys)
 	wellKnown.GET("/config", wellKnownHandler.GetConfig)
 
-	emailHandler, err := NewEmailHandler(cfg, persister, sessionManager, auditLogger)
+	emailHandler, err := NewEmailHandler(cfg, persister, sessionManager, auditLogger, notificationService)
 	if err != nil {
 		panic(fmt.Errorf("failed to create public email handler: %w", err))
 	}

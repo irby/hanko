@@ -1,11 +1,11 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/suite"
-	"github.com/teamhanko/hanko/backend/config"
 	"github.com/teamhanko/hanko/backend/crypto/jwk"
 	"github.com/teamhanko/hanko/backend/dto"
 	"github.com/teamhanko/hanko/backend/session"
@@ -17,17 +17,13 @@ import (
 
 func TestEmailSuite(t *testing.T) {
 	t.Parallel()
-	suite.Run(t, new(emailSuite))
+	s := new(emailSuite)
+	s.WithEmailServer = true
+	suite.Run(t, s)
 }
 
 type emailSuite struct {
 	test.Suite
-}
-
-func (s *emailSuite) TestEmailHandler_New() {
-	emailHandler, err := NewEmailHandler(&config.Config{}, s.Storage, sessionManager{}, test.NewAuditLogger())
-	s.NoError(err)
-	s.NotEmpty(emailHandler)
 }
 
 func (s *emailSuite) TestEmailHandler_List() {
@@ -81,6 +77,50 @@ func (s *emailSuite) TestEmailHandler_List() {
 				s.Equal(currentTest.expectedCount, len(emails))
 			}
 		})
+	}
+}
+
+func (s *emailSuite) TestEmailHandler_Create() {
+	if testing.Short() {
+		s.T().Skip("skipping test in short mode.")
+	}
+
+	err := s.LoadFixtures("../test/fixtures/email")
+	s.Require().NoError(err)
+
+	config := test.DefaultConfig
+	config.Emails.MaxNumOfAddresses = 100
+	config.SecurityNotifications.Notifications.EmailCreate.Enabled = true
+
+	e := NewPublicRouter(&config, s.Storage, nil)
+
+	jwkManager, err := jwk.NewDefaultManager(config.Secrets.Keys, s.Storage.GetJwkPersister())
+	s.Require().NoError(err)
+	sessionManager, err := session.NewManager(jwkManager, config)
+	s.Require().NoError(err)
+
+	userId := uuid.FromStringOrNil("b5dd5267-b462-48be-b70d-bcd6f1bbe7a5")
+
+	token, err := sessionManager.GenerateJWT(userId)
+	s.NoError(err)
+	cookie, err := sessionManager.GenerateCookie(token)
+	s.NoError(err)
+
+	body := dto.EmailCreateRequest{
+		Address: "test@example.com",
+	}
+	bodyJson, err := json.Marshal(body)
+	s.NoError(err)
+
+	req := httptest.NewRequest(http.MethodPost, "/emails", bytes.NewReader(bodyJson))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+
+	countBefore := len(s.EmailServer.Messages())
+	e.ServeHTTP(rec, req)
+	if s.Equal(http.StatusOK, rec.Code) {
+		s.Equal(countBefore+1, len(s.EmailServer.Messages()))
 	}
 }
 
