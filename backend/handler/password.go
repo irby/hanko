@@ -11,6 +11,7 @@ import (
 	"github.com/teamhanko/hanko/backend/audit_log"
 	"github.com/teamhanko/hanko/backend/config"
 	"github.com/teamhanko/hanko/backend/dto"
+	"github.com/teamhanko/hanko/backend/mail"
 	"github.com/teamhanko/hanko/backend/persistence"
 	"github.com/teamhanko/hanko/backend/persistence/models"
 	"github.com/teamhanko/hanko/backend/rate_limiter"
@@ -21,25 +22,31 @@ import (
 )
 
 type PasswordHandler struct {
-	persister      persistence.Persister
-	sessionManager session.Manager
-	cfg            *config.Config
-	auditLogger    auditlog.Logger
-	rateLimiter    limiter.Store
+	persister           persistence.Persister
+	sessionManager      session.Manager
+	cfg                 *config.Config
+	auditLogger         auditlog.Logger
+	rateLimiter         limiter.Store
+	notificationService *mail.NotificationService
 }
 
-func NewPasswordHandler(persister persistence.Persister, sessionManager session.Manager, cfg *config.Config, auditLogger auditlog.Logger) *PasswordHandler {
+func NewPasswordHandler(persister persistence.Persister, sessionManager session.Manager, cfg *config.Config, auditLogger auditlog.Logger, mailer mail.Mailer) (*PasswordHandler, error) {
 	var rateLimiter limiter.Store
 	if cfg.RateLimiter.Enabled {
 		rateLimiter = rate_limiter.NewRateLimiter(cfg.RateLimiter, cfg.RateLimiter.PasswordLimits)
 	}
-	return &PasswordHandler{
-		persister:      persister,
-		sessionManager: sessionManager,
-		cfg:            cfg,
-		auditLogger:    auditLogger,
-		rateLimiter:    rateLimiter,
+	notificationService, err := mail.NewNotificationService(cfg, mailer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new notification service: %w", err)
 	}
+	return &PasswordHandler{
+		persister:           persister,
+		sessionManager:      sessionManager,
+		cfg:                 cfg,
+		auditLogger:         auditLogger,
+		rateLimiter:         rateLimiter,
+		notificationService: notificationService,
+	}, nil
 }
 
 type PasswordSetBody struct {
@@ -142,6 +149,10 @@ func (h *PasswordHandler) Set(c echo.Context) error {
 				err = h.auditLogger.CreateWithConnection(tx, c, models.AuditLogPasswordSetSucceeded, user, nil)
 				if err != nil {
 					return fmt.Errorf("failed to create audit log: %w", err)
+				}
+				err := h.notificationService.SendPasswordUpdateEmail(c, user.Emails.GetPrimary())
+				if err != nil {
+					return fmt.Errorf("failed to send password update email: %w", err)
 				}
 				return c.JSON(http.StatusOK, nil)
 			}

@@ -76,7 +76,10 @@ func NewPublicRouter(cfg *config.Config, persister persistence.Persister, promet
 	auditLogger := auditlog.NewLogger(persister, cfg.AuditLog)
 
 	if cfg.Password.Enabled {
-		passwordHandler := NewPasswordHandler(persister, sessionManager, cfg, auditLogger)
+		passwordHandler, err := NewPasswordHandler(persister, sessionManager, cfg, auditLogger, mailer)
+		if err != nil {
+			panic(fmt.Errorf("failed to create password handler: %w", err))
+		}
 
 		password := g.Group("/password")
 		password.PUT("", passwordHandler.Set, sessionMiddleware)

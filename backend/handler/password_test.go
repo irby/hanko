@@ -18,7 +18,9 @@ import (
 
 func TestPasswordSuite(t *testing.T) {
 	t.Parallel()
-	suite.Run(t, new(passwordSuite))
+	s := new(passwordSuite)
+	s.WithEmailServer = true
+	suite.Run(t, s)
 }
 
 type passwordSuite struct {
@@ -37,48 +39,56 @@ func (s *passwordSuite) TestPasswordHandler_Set_Create() {
 	cfg := &test.DefaultConfig
 	cfg.Password.Enabled = true
 	cfg.Password.MinPasswordLength = 8
+	cfg.SecurityNotifications.Notifications.PasswordUpdate.Enabled = true
 
 	tests := []struct {
-		name         string
-		body         string
-		userId       uuid.UUID
-		expectedCode int
+		name            string
+		body            string
+		userId          uuid.UUID
+		expectedCode    int
+		shouldSendEmail bool
 	}{
 		{
-			name:         "should create a password successful",
-			body:         fmt.Sprintf(`{"user_id": "%s", "password": "verybadpassword"}`, userWithNoPassword),
-			userId:       userWithNoPassword,
-			expectedCode: http.StatusCreated,
+			name:            "should create a password successful",
+			body:            fmt.Sprintf(`{"user_id": "%s", "password": "verybadpassword"}`, userWithNoPassword),
+			userId:          userWithNoPassword,
+			expectedCode:    http.StatusCreated,
+			shouldSendEmail: false,
 		},
 		{
-			name:         "should update a password successful",
-			body:         fmt.Sprintf(`{"user_id": "%s", "password": "verybadpassword"}`, userWithPassword),
-			userId:       userWithPassword,
-			expectedCode: http.StatusOK,
+			name:            "should update a password successful",
+			body:            fmt.Sprintf(`{"user_id": "%s", "password": "verybadpassword"}`, userWithPassword),
+			userId:          userWithPassword,
+			expectedCode:    http.StatusOK,
+			shouldSendEmail: true,
 		},
 		{
-			name:         "should not create a password that is too short",
-			body:         fmt.Sprintf(`{"user_id": "%s", "password": "very"}`, userWithNoPassword),
-			userId:       userWithNoPassword,
-			expectedCode: http.StatusBadRequest,
+			name:            "should not create a password that is too short",
+			body:            fmt.Sprintf(`{"user_id": "%s", "password": "very"}`, userWithNoPassword),
+			userId:          userWithNoPassword,
+			expectedCode:    http.StatusBadRequest,
+			shouldSendEmail: false,
 		},
 		{
-			name:         "should not create a password that is too long",
-			body:         fmt.Sprintf(`{"user_id": "%s", "password": "thisIsAVeryLongPasswordThatIsUsedToTestIfAnErrorWillBeReturnedForTooLongPasswords"}`, userWithNoPassword),
-			userId:       userWithNoPassword,
-			expectedCode: http.StatusBadRequest,
+			name:            "should not create a password that is too long",
+			body:            fmt.Sprintf(`{"user_id": "%s", "password": "thisIsAVeryLongPasswordThatIsUsedToTestIfAnErrorWillBeReturnedForTooLongPasswords"}`, userWithNoPassword),
+			userId:          userWithNoPassword,
+			expectedCode:    http.StatusBadRequest,
+			shouldSendEmail: false,
 		},
 		{
-			name:         "should not create a password for an unknown user",
-			body:         fmt.Sprintf(`{"user_id": "%s", "password": "verybadpassword"}`, unknownUser),
-			userId:       unknownUser,
-			expectedCode: http.StatusUnauthorized,
+			name:            "should not create a password for an unknown user",
+			body:            fmt.Sprintf(`{"user_id": "%s", "password": "verybadpassword"}`, unknownUser),
+			userId:          unknownUser,
+			expectedCode:    http.StatusUnauthorized,
+			shouldSendEmail: false,
 		},
 		{
-			name:         "should not create a password for a different user",
-			body:         fmt.Sprintf(`{"user_id": "%s", "password": "verybadpassword"}`, userWithNoPassword),
-			userId:       userWithPassword,
-			expectedCode: http.StatusForbidden,
+			name:            "should not create a password for a different user",
+			body:            fmt.Sprintf(`{"user_id": "%s", "password": "verybadpassword"}`, userWithNoPassword),
+			userId:          userWithPassword,
+			expectedCode:    http.StatusForbidden,
+			shouldSendEmail: false,
 		},
 	}
 
@@ -101,10 +111,19 @@ func (s *passwordSuite) TestPasswordHandler_Set_Create() {
 			req.AddCookie(cookie)
 			rec := httptest.NewRecorder()
 
+			countBefore := len(s.EmailServer.Messages())
+
 			e := NewPublicRouter(cfg, s.Storage, nil)
 			e.ServeHTTP(rec, req)
 
 			s.Equal(currentTest.expectedCode, rec.Code)
+
+			if currentTest.shouldSendEmail {
+				s.Equal(countBefore+1, len(s.EmailServer.Messages()))
+				return
+			}
+
+			s.Equal(countBefore, len(s.EmailServer.Messages()))
 		})
 	}
 }
