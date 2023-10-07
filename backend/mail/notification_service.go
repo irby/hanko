@@ -43,7 +43,7 @@ func (m *NotificationService) SendPasscodeEmail(c echo.Context, toEmail *models.
 		SubjectTemplate: "email_subject_login",
 		BodyTemplate:    "loginTextMail",
 	}
-	return m.sendEmail(c, passcodeEmailProps, m.generateSendEmailData(data))
+	return m.sendEmail(c, passcodeEmailProps, m.generateSendEmailData(data), false)
 }
 
 func (m *NotificationService) SendPasswordUpdateEmail(c echo.Context, toEmail *models.Email) error {
@@ -57,7 +57,7 @@ func (m *NotificationService) SendPasswordUpdateEmail(c echo.Context, toEmail *m
 		SubjectTemplate: "email_subject_password_update",
 		BodyTemplate:    "passwordUpdateTextMail",
 	}
-	return m.sendEmail(c, passcodeEmailProps, m.generateSendEmailData(struct{}{}))
+	return m.sendEmail(c, passcodeEmailProps, m.generateSendEmailData(struct{}{}), true)
 }
 
 type SendPrimaryEmailUpdateEmailData struct {
@@ -76,10 +76,14 @@ func (m *NotificationService) SendPrimaryEmailUpdateEmail(c echo.Context, toEmai
 		SubjectTemplate: "email_subject_primary_email_update",
 		BodyTemplate:    "primaryEmailUpdateTextMail",
 	}
-	return m.sendEmail(c, passcodeEmailProps, m.generateSendEmailData(data))
+	return m.sendEmail(c, passcodeEmailProps, m.generateSendEmailData(data), true)
 }
 
-func (m *NotificationService) SendEmailCreateEmail(c echo.Context, toEmail *models.Email) error {
+type SendEmailCreateEmailData struct {
+	NewEmailAddress string
+}
+
+func (m *NotificationService) SendEmailCreateEmail(c echo.Context, toEmail *models.Email, data SendEmailCreateEmailData) error {
 	if !m.notificationConfig.Notifications.EmailCreate.Enabled {
 		return nil
 	}
@@ -90,7 +94,7 @@ func (m *NotificationService) SendEmailCreateEmail(c echo.Context, toEmail *mode
 		SubjectTemplate: "email_subject_email_create",
 		BodyTemplate:    "createEmailTextMail",
 	}
-	return m.sendEmail(c, passcodeEmailProps, m.generateSendEmailData(struct{}{}))
+	return m.sendEmail(c, passcodeEmailProps, m.generateSendEmailData(data), true)
 }
 
 func (m *NotificationService) SendPasskeyCreateEmail(c echo.Context, toEmail *models.Email) error {
@@ -104,7 +108,7 @@ func (m *NotificationService) SendPasskeyCreateEmail(c echo.Context, toEmail *mo
 		SubjectTemplate: "email_subject_passkey_create",
 		BodyTemplate:    "passkeyCreateTextMail",
 	}
-	return m.sendEmail(c, passcodeEmailProps, m.generateSendEmailData(struct{}{}))
+	return m.sendEmail(c, passcodeEmailProps, m.generateSendEmailData(struct{}{}), true)
 }
 
 type EmailProps struct {
@@ -114,26 +118,35 @@ type EmailProps struct {
 	BodyTemplate    string
 }
 
-func (m *NotificationService) sendEmail(c echo.Context, props EmailProps, data map[string]interface{}) error {
+func (m *NotificationService) sendEmail(c echo.Context, props EmailProps, data map[string]interface{}, renderAsHtml bool) error {
 	lang := c.Request().Header.Get("Accept-Language")
 	body, err := m.renderer.Render(props.BodyTemplate, lang, data)
 	if err != nil {
 		return fmt.Errorf("failed to render email template: %w", err)
 	}
 
-	message := gomail.NewMessage()
+	message := m.generateMailMessage(renderAsHtml, body)
 	message.SetAddressHeader("To", props.ToEmail, "")
 	message.SetAddressHeader("From", m.emailConfig.FromAddress, m.emailConfig.FromName)
-
 	message.SetHeader("Subject", m.renderer.Translate(lang, props.SubjectTemplate, data))
-
-	message.SetBody("text/plain", body)
 
 	err = m.mailer.Send(message)
 	if err != nil {
 		return fmt.Errorf("failed to send passcode: %w", err)
 	}
 	return nil
+}
+
+func (m *NotificationService) generateMailMessage(renderAsHtml bool, body string) *gomail.Message {
+	if (renderAsHtml) {
+		message := gomail.NewMessage(gomail.SetEncoding(gomail.Base64))
+		message.SetBody("text/html", body)
+		return message
+	}
+	
+	message := gomail.NewMessage()
+	message.SetBody("text/plain", body)
+	return message
 }
 
 func (m *NotificationService) generateSendEmailData(data interface{}) map[string]interface{} {

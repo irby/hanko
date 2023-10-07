@@ -133,8 +133,11 @@ func (s *notificationServiceSuite) TestNotificationService_SendEmailCreateEmail_
 	testEmail := models.Email{
 		Address: "test.sendemailcreateemail@example.com",
 	}
+	data := SendEmailCreateEmailData{
+		NewEmailAddress: "test@example.com",
+	}
 	countBefore := s.getMessageCount()
-	err := service.SendEmailCreateEmail(testContext, &testEmail)
+	err := service.SendEmailCreateEmail(testContext, &testEmail, data)
 	s.NoError(err)
 	s.Equal(countBefore, s.getMessageCount())
 }
@@ -150,8 +153,11 @@ func (s *notificationServiceSuite) TestNotificationService_SendEmailCreateEmail_
 	testEmail := models.Email{
 		Address: "test.sendemailcreateemail@example.com",
 	}
+	data := SendEmailCreateEmailData{
+		NewEmailAddress: "test@example.com",
+	}
 	countBefore := s.getMessageCount()
-	err := service.SendEmailCreateEmail(testContext, &testEmail)
+	err := service.SendEmailCreateEmail(testContext, &testEmail, data)
 	s.NoError(err)
 	s.Equal(countBefore+1, s.getMessageCount())
 }

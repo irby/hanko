@@ -14,7 +14,7 @@ email_subject_primary_email_update:
 
 email_create_text:
   description: ""
-  other: "The email address {{ .EmailAddress }} has been successfully added to your {{ .ServiceName }} account."
+  other: "The email address {{ .NewEmailAddress }} has been successfully added to your {{ .ServiceName }} account."
 email_subject_email_create:
   description: ""
   other: "A new email address has been registered to your {{ .ServiceName }} account"
@@ -29,4 +29,4 @@ email_subject_passkey_create:
 
 security_disclaimer_text:
   description: "Security notice to user to let them know who to contact if they did not authorize this change"
-  other: "If you did not authorize this change, please contact your system administrator"
+  other: "If you did not authorize this change, please contact {{ .NotifyAddress }}."
