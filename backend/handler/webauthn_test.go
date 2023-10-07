@@ -10,7 +10,9 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/teamhanko/hanko/backend/config"
 	"github.com/teamhanko/hanko/backend/crypto/jwk"
+	"github.com/teamhanko/hanko/backend/mail"
 	"github.com/teamhanko/hanko/backend/persistence/models"
+	"github.com/teamhanko/hanko/backend/service"
 	"github.com/teamhanko/hanko/backend/session"
 	"github.com/teamhanko/hanko/backend/test"
 	"net/http"
@@ -33,7 +35,7 @@ func (s *webauthnSuite) TestWebauthnHandler_NewHandler() {
 	if testing.Short() {
 		s.T().Skip("skipping test in short mode")
 	}
-	handler, err := NewWebauthnHandler(&test.DefaultConfig, s.Storage, s.GetDefaultSessionManager(), test.NewAuditLogger())
+	handler, err := NewWebauthnHandler(&test.DefaultConfig, s.Storage, s.GetDefaultSessionManager(), test.NewAuditLogger(), s.GetDefaultNotificationService())
 	s.NoError(err)
 	s.NotEmpty(handler)
 }
@@ -326,6 +328,16 @@ func (s *webauthnSuite) GetDefaultSessionManager() session.Manager {
 	s.Require().NoError(err)
 
 	return sessionManager
+}
+
+func (s *webauthnSuite) GetDefaultNotificationService() *service.NotificationService {
+	mailer, err := mail.NewMailer(test.DefaultConfig.Passcode.Smtp)
+	s.Require().NoError(err)
+	config := test.DefaultConfig
+	config.SecurityNotifications.Notifications.PasskeyCreate.Enabled = true
+	service, err := service.NewNotificationService(&config, mailer)
+	s.Require().NoError(err)
+	return service
 }
 
 var userId = "ec4ef049-5b88-4321-a173-21b0eff06a04"

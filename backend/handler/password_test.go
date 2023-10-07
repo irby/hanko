@@ -19,7 +19,6 @@ import (
 func TestPasswordSuite(t *testing.T) {
 	t.Parallel()
 	s := new(passwordSuite)
-	s.WithEmailServer = true
 	suite.Run(t, s)
 }
 

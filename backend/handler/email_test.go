@@ -18,7 +18,6 @@ import (
 func TestEmailSuite(t *testing.T) {
 	t.Parallel()
 	s := new(emailSuite)
-	s.WithEmailServer = true
 	suite.Run(t, s)
 }
 

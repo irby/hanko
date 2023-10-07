@@ -1,24 +1,25 @@
-package mail
+package service
 
 import (
 	"fmt"
 	"github.com/fatih/structs"
 	"github.com/labstack/echo/v4"
 	"github.com/teamhanko/hanko/backend/config"
+	"github.com/teamhanko/hanko/backend/mail"
 	"github.com/teamhanko/hanko/backend/persistence/models"
 	"gopkg.in/gomail.v2"
 )
 
 type NotificationService struct {
-	renderer           *Renderer
+	renderer           *mail.Renderer
 	config             *config.Config
 	emailConfig        config.Email
 	notificationConfig config.SecurityNotifications
-	mailer             Mailer
+	mailer             mail.Mailer
 }
 
-func NewNotificationService(cfg *config.Config, mailer Mailer) (*NotificationService, error) {
-	renderer, err := NewRenderer()
+func NewNotificationService(cfg *config.Config, mailer mail.Mailer) (*NotificationService, error) {
+	renderer, err := mail.NewRenderer()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new renderer: %w", err)
 	}
@@ -138,12 +139,12 @@ func (m *NotificationService) sendEmail(c echo.Context, props EmailProps, data m
 }
 
 func (m *NotificationService) generateMailMessage(renderAsHtml bool, body string) *gomail.Message {
-	if (renderAsHtml) {
+	if renderAsHtml {
 		message := gomail.NewMessage(gomail.SetEncoding(gomail.Base64))
 		message.SetBody("text/html", body)
 		return message
 	}
-	
+
 	message := gomail.NewMessage()
 	message.SetBody("text/plain", body)
 	return message

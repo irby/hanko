@@ -11,10 +11,10 @@ import (
 	"github.com/teamhanko/hanko/backend/audit_log"
 	"github.com/teamhanko/hanko/backend/config"
 	"github.com/teamhanko/hanko/backend/dto"
-	"github.com/teamhanko/hanko/backend/mail"
 	"github.com/teamhanko/hanko/backend/persistence"
 	"github.com/teamhanko/hanko/backend/persistence/models"
 	"github.com/teamhanko/hanko/backend/rate_limiter"
+	"github.com/teamhanko/hanko/backend/service"
 	"github.com/teamhanko/hanko/backend/session"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
@@ -27,10 +27,10 @@ type PasswordHandler struct {
 	cfg                 *config.Config
 	auditLogger         auditlog.Logger
 	rateLimiter         limiter.Store
-	notificationService *mail.NotificationService
+	notificationService *service.NotificationService
 }
 
-func NewPasswordHandler(persister persistence.Persister, sessionManager session.Manager, cfg *config.Config, auditLogger auditlog.Logger, notificationService *mail.NotificationService) (*PasswordHandler, error) {
+func NewPasswordHandler(persister persistence.Persister, sessionManager session.Manager, cfg *config.Config, auditLogger auditlog.Logger, notificationService *service.NotificationService) (*PasswordHandler, error) {
 	var rateLimiter limiter.Store
 	if cfg.RateLimiter.Enabled {
 		rateLimiter = rate_limiter.NewRateLimiter(cfg.RateLimiter, cfg.RateLimiter.PasswordLimits)

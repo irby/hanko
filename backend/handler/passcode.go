@@ -12,10 +12,10 @@ import (
 	"github.com/teamhanko/hanko/backend/config"
 	"github.com/teamhanko/hanko/backend/crypto"
 	"github.com/teamhanko/hanko/backend/dto"
-	"github.com/teamhanko/hanko/backend/mail"
 	"github.com/teamhanko/hanko/backend/persistence"
 	"github.com/teamhanko/hanko/backend/persistence/models"
 	"github.com/teamhanko/hanko/backend/rate_limiter"
+	"github.com/teamhanko/hanko/backend/service"
 	"github.com/teamhanko/hanko/backend/session"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
@@ -32,12 +32,12 @@ type PasscodeHandler struct {
 	cfg                 *config.Config
 	auditLogger         auditlog.Logger
 	rateLimiter         limiter.Store
-	notificationService *mail.NotificationService
+	notificationService *service.NotificationService
 }
 
 var maxPasscodeTries = 3
 
-func NewPasscodeHandler(cfg *config.Config, persister persistence.Persister, sessionManager session.Manager, notificationService *mail.NotificationService, auditLogger auditlog.Logger) (*PasscodeHandler, error) {
+func NewPasscodeHandler(cfg *config.Config, persister persistence.Persister, sessionManager session.Manager, notificationService *service.NotificationService, auditLogger auditlog.Logger) (*PasscodeHandler, error) {
 	var rateLimiter limiter.Store
 	if cfg.RateLimiter.Enabled {
 		rateLimiter = rate_limiter.NewRateLimiter(cfg.RateLimiter, cfg.RateLimiter.PasscodeLimits)
@@ -172,7 +172,7 @@ func (h *PasscodeHandler) Init(c echo.Context) error {
 	}
 
 	durationTTL := time.Duration(h.TTL) * time.Second
-	data := mail.SendPasscodeEmailData{
+	data := service.SendPasscodeEmailData{
 		Code: passcode,
 		TTL:  fmt.Sprintf("%.0f", durationTTL.Minutes()),
 	}
@@ -310,7 +310,9 @@ func (h *PasscodeHandler) Finish(c echo.Context) error {
 				return fmt.Errorf("failed to update the email verified status: %w", err)
 			}
 
-			if user.Emails.GetPrimary() == nil {
+			existingPrimaryEmail := user.Emails.GetPrimary()
+
+			if existingPrimaryEmail == nil {
 				primaryEmail := models.NewPrimaryEmail(passcode.Email.ID, user.ID)
 				err = primaryEmailPersister.Create(*primaryEmail)
 				if err != nil {
@@ -323,6 +325,12 @@ func (h *PasscodeHandler) Finish(c echo.Context) error {
 				if err != nil {
 					return fmt.Errorf("failed to create audit log: %w", err)
 				}
+			} else {
+				data := service.SendEmailCreateEmailData{
+					NewEmailAddress: passcode.Email.Address,
+				}
+
+				err = h.notificationService.SendEmailCreateEmail(c, existingPrimaryEmail, data)
 			}
 
 			err = h.auditLogger.CreateWithConnection(tx, c, models.AuditLogEmailVerified, user, nil)

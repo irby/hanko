@@ -10,9 +10,9 @@ import (
 	auditlog "github.com/teamhanko/hanko/backend/audit_log"
 	"github.com/teamhanko/hanko/backend/config"
 	"github.com/teamhanko/hanko/backend/dto"
-	"github.com/teamhanko/hanko/backend/mail"
 	"github.com/teamhanko/hanko/backend/persistence"
 	"github.com/teamhanko/hanko/backend/persistence/models"
+	"github.com/teamhanko/hanko/backend/service"
 	"github.com/teamhanko/hanko/backend/session"
 	"net/http"
 	"strings"
@@ -23,10 +23,10 @@ type EmailHandler struct {
 	cfg                 *config.Config
 	sessionManager      session.Manager
 	auditLogger         auditlog.Logger
-	notificationService *mail.NotificationService
+	notificationService *service.NotificationService
 }
 
-func NewEmailHandler(cfg *config.Config, persister persistence.Persister, sessionManager session.Manager, auditLogger auditlog.Logger, notificationService *mail.NotificationService) (*EmailHandler, error) {
+func NewEmailHandler(cfg *config.Config, persister persistence.Persister, sessionManager session.Manager, auditLogger auditlog.Logger, notificationService *service.NotificationService) (*EmailHandler, error) {
 	return &EmailHandler{
 		persister:           persister,
 		cfg:                 cfg,
@@ -141,9 +141,15 @@ func (h *EmailHandler) Create(c echo.Context) error {
 			return fmt.Errorf("failed to create audit log: %w", err)
 		}
 
-		err = h.notificationService.SendEmailCreateEmail(c, user.Emails.GetPrimary())
-		if err != nil {
-			return fmt.Errorf("failed to send email create email: %w", err)
+		if !h.cfg.Emails.RequireVerification {
+			data := service.SendEmailCreateEmailData{
+				NewEmailAddress: email.Address,
+			}
+
+			err = h.notificationService.SendEmailCreateEmail(c, user.Emails.GetPrimary(), data)
+			if err != nil {
+				return fmt.Errorf("failed to send email create email: %w", err)
+			}
 		}
 
 		return c.JSON(http.StatusOK, email)
@@ -182,8 +188,10 @@ func (h *EmailHandler) SetPrimaryEmail(c echo.Context) error {
 
 	return h.persister.Transaction(func(tx *pop.Connection) error {
 		var primaryEmail *models.PrimaryEmail
+		var originalEmail *models.Email
 		if e := user.Emails.GetPrimary(); e != nil {
 			primaryEmail = e.PrimaryEmail
+			originalEmail = e
 		}
 
 		if primaryEmail == nil {
@@ -197,6 +205,20 @@ func (h *EmailHandler) SetPrimaryEmail(c echo.Context) error {
 			err = h.persister.GetPrimaryEmailPersisterWithConnection(tx).Update(*primaryEmail)
 			if err != nil {
 				return fmt.Errorf("failed to change primary email: %w", err)
+			}
+
+			emailUpdateData := service.SendPrimaryEmailUpdateEmailData{
+				OldEmailAddress: originalEmail.Address,
+				NewEmailAddress: email.Address,
+			}
+
+			err = h.notificationService.SendPrimaryEmailUpdateEmail(c, originalEmail, emailUpdateData)
+			if err != nil {
+				return fmt.Errorf("failed to send primary email update email to original address: %w", err)
+			}
+			err = h.notificationService.SendPrimaryEmailUpdateEmail(c, email, emailUpdateData)
+			if err != nil {
+				return fmt.Errorf("failed to send primary email update email to new address: %w", err)
 			}
 		}
 
