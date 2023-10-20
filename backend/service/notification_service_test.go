@@ -15,8 +15,8 @@ import (
 )
 
 func TestNewNotificationService(t *testing.T) {
-	t.Parallel()
 	s := new(notificationServiceSuite)
+	s.WithEmailServer = true
 	suite.Run(t, s)
 }
 
@@ -31,7 +31,7 @@ func (s *notificationServiceSuite) TestNotificationService_SendPasscodeEmail() {
 		s.T().Skip("skipping test in short mode")
 	}
 	testMailer := s.getTestMailer()
-	service := s.getService(&test.DefaultConfig, testMailer.GetMailer())
+	service := s.getService(s.getTestConfig(), testMailer.GetMailer())
 	testContext := s.generateTestContext()
 	testEmail := models.Email{
 		Address: "test.sendpasscode@example.com",
@@ -50,7 +50,7 @@ func (s *notificationServiceSuite) TestNotificationService_SendPasswordUpdateEma
 		s.T().Skip("skipping test in short mode")
 	}
 	testMailer := s.getTestMailer()
-	cfg := &test.DefaultConfig
+	cfg := s.getTestConfig()
 	cfg.SecurityNotifications.Notifications.PasswordUpdate.Enabled = false
 	service := s.getService(cfg, testMailer.GetMailer())
 	testContext := s.generateTestContext()
@@ -67,7 +67,7 @@ func (s *notificationServiceSuite) TestNotificationService_SendPasswordUpdateEma
 		s.T().Skip("skipping test in short mode")
 	}
 	testMailer := s.getTestMailer()
-	cfg := &test.DefaultConfig
+	cfg := s.getTestConfig()
 	cfg.SecurityNotifications.Notifications.PasswordUpdate.Enabled = true
 	service := s.getService(cfg, testMailer.GetMailer())
 	testContext := s.generateTestContext()
@@ -84,7 +84,7 @@ func (s *notificationServiceSuite) TestNotificationService_SendPrimaryEmailUpdat
 		s.T().Skip("skipping test in short mode")
 	}
 	testMailer := s.getTestMailer()
-	cfg := &test.DefaultConfig
+	cfg := s.getTestConfig()
 	cfg.SecurityNotifications.Notifications.PrimaryEmailUpdate.Enabled = false
 	service := s.getService(cfg, testMailer.GetMailer())
 	testContext := s.generateTestContext()
@@ -105,7 +105,7 @@ func (s *notificationServiceSuite) TestNotificationService_SendPrimaryEmailUpdat
 		s.T().Skip("skipping test in short mode")
 	}
 	testMailer := s.getTestMailer()
-	cfg := &test.DefaultConfig
+	cfg := s.getTestConfig()
 	cfg.SecurityNotifications.Notifications.PrimaryEmailUpdate.Enabled = true
 	service := s.getService(cfg, testMailer.GetMailer())
 	testContext := s.generateTestContext()
@@ -126,7 +126,7 @@ func (s *notificationServiceSuite) TestNotificationService_SendEmailCreateEmail_
 		s.T().Skip("skipping test in short mode")
 	}
 	testMailer := s.getTestMailer()
-	cfg := &test.DefaultConfig
+	cfg := s.getTestConfig()
 	cfg.SecurityNotifications.Notifications.EmailCreate.Enabled = false
 	service := s.getService(cfg, testMailer.GetMailer())
 	testContext := s.generateTestContext()
@@ -146,7 +146,7 @@ func (s *notificationServiceSuite) TestNotificationService_SendEmailCreateEmail_
 		s.T().Skip("skipping test in short mode")
 	}
 	testMailer := s.getTestMailer()
-	cfg := &test.DefaultConfig
+	cfg := s.getTestConfig()
 	cfg.SecurityNotifications.Notifications.EmailCreate.Enabled = true
 	service := s.getService(cfg, testMailer.GetMailer())
 	testContext := s.generateTestContext()
@@ -166,7 +166,7 @@ func (s *notificationServiceSuite) TestNotificationService_SendPasskeyCreateEmai
 		s.T().Skip("skipping test in short mode")
 	}
 	testMailer := s.getTestMailer()
-	cfg := &test.DefaultConfig
+	cfg := s.getTestConfig()
 	cfg.SecurityNotifications.Notifications.PasskeyCreate.Enabled = false
 	service := s.getService(cfg, testMailer.GetMailer())
 	testContext := s.generateTestContext()
@@ -183,7 +183,7 @@ func (s *notificationServiceSuite) TestNotificationService_SendPasskeyCreateEmai
 		s.T().Skip("skipping test in short mode")
 	}
 	testMailer := s.getTestMailer()
-	cfg := &test.DefaultConfig
+	cfg := s.getTestConfig()
 	cfg.SecurityNotifications.Notifications.PasskeyCreate.Enabled = true
 	service := s.getService(cfg, testMailer.GetMailer())
 	testContext := s.generateTestContext()
@@ -214,8 +214,10 @@ func (s *notificationServiceSuite) translate(service *NotificationService, messa
 	return service.renderer.Translate(lang, messageId, structs.Map(data))
 }
 
-func (s *notificationServiceSuite) getMessageCount() int {
-	return len(s.EmailServer.Messages())
+func (s *notificationServiceSuite) getTestConfig() *config.Config {
+	cfg := &test.DefaultConfig
+	cfg.Passcode.Smtp.Port = s.EmailServer.SmtpPort
+	return cfg
 }
 
 func (s *notificationServiceSuite) getTestMailer() *test.TestMailer {

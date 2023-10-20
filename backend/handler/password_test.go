@@ -17,8 +17,8 @@ import (
 )
 
 func TestPasswordSuite(t *testing.T) {
-	t.Parallel()
 	s := new(passwordSuite)
+	s.WithEmailServer = true
 	suite.Run(t, s)
 }
 
@@ -39,6 +39,7 @@ func (s *passwordSuite) TestPasswordHandler_Set_Create() {
 	cfg.Password.Enabled = true
 	cfg.Password.MinPasswordLength = 8
 	cfg.SecurityNotifications.Notifications.PasswordUpdate.Enabled = true
+	cfg.Passcode.Smtp.Port = s.EmailServer.SmtpPort
 
 	tests := []struct {
 		name            string
@@ -110,19 +111,23 @@ func (s *passwordSuite) TestPasswordHandler_Set_Create() {
 			req.AddCookie(cookie)
 			rec := httptest.NewRecorder()
 
-			countBefore := len(s.EmailServer.Messages())
+			emailsBefore, err := s.EmailServer.GetEmails()
+			s.Require().NoError(err)
 
 			e := NewPublicRouter(cfg, s.Storage, nil)
 			e.ServeHTTP(rec, req)
 
 			s.Equal(currentTest.expectedCode, rec.Code)
 
+			emailsAfter, err := s.EmailServer.GetEmails()
+			s.Require().NoError(err)
+
 			if currentTest.shouldSendEmail {
-				s.Equal(countBefore+1, len(s.EmailServer.Messages()))
+				s.Equal(emailsBefore.TotalRecords+1, emailsAfter.TotalRecords)
 				return
 			}
 
-			s.Equal(countBefore, len(s.EmailServer.Messages()))
+			s.Equal(emailsBefore.TotalRecords, emailsAfter.TotalRecords)
 		})
 	}
 }

@@ -18,6 +18,7 @@ import (
 
 func TestPasscodeSuite(t *testing.T) {
 	s := new(passcodeSuite)
+	s.WithEmailServer = true
 	suite.Run(t, s)
 }
 
