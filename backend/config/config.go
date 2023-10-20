@@ -9,6 +9,7 @@ import (
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/file"
+	"github.com/teamhanko/hanko/backend/ee/saml/config"
 	"golang.org/x/exp/slices"
 	"log"
 	"strings"
@@ -17,20 +18,21 @@ import (
 
 // Config is the central configuration type
 type Config struct {
-	Server                Server                `yaml:"server" json:"server,omitempty" koanf:"server"`
-	Webauthn              WebauthnSettings      `yaml:"webauthn" json:"webauthn,omitempty" koanf:"webauthn"`
-	Passcode              Passcode              `yaml:"passcode" json:"passcode" koanf:"passcode"`
-	Password              Password              `yaml:"password" json:"password,omitempty" koanf:"password"`
-	Database              Database              `yaml:"database" json:"database" koanf:"database"`
-	Secrets               Secrets               `yaml:"secrets" json:"secrets" koanf:"secrets"`
-	Service               Service               `yaml:"service" json:"service" koanf:"service"`
-	Session               Session               `yaml:"session" json:"session,omitempty" koanf:"session"`
-	AuditLog              AuditLog              `yaml:"audit_log" json:"audit_log,omitempty" koanf:"audit_log" split_words:"true"`
-	Emails                Emails                `yaml:"emails" json:"emails,omitempty" koanf:"emails"`
-	RateLimiter           RateLimiter           `yaml:"rate_limiter" json:"rate_limiter,omitempty" koanf:"rate_limiter" split_words:"true"`
-	ThirdParty            ThirdParty            `yaml:"third_party" json:"third_party,omitempty" koanf:"third_party" split_words:"true"`
-	Log                   LoggerConfig          `yaml:"log" json:"log,omitempty" koanf:"log"`
-	Account               Account               `yaml:"account" json:"account,omitempty" koanf:"account"`
+	Server      Server           `yaml:"server" json:"server,omitempty" koanf:"server"`
+	Webauthn    WebauthnSettings `yaml:"webauthn" json:"webauthn,omitempty" koanf:"webauthn"`
+	Passcode    Passcode         `yaml:"passcode" json:"passcode" koanf:"passcode"`
+	Password    Password         `yaml:"password" json:"password,omitempty" koanf:"password"`
+	Database    Database         `yaml:"database" json:"database" koanf:"database"`
+	Secrets     Secrets          `yaml:"secrets" json:"secrets" koanf:"secrets"`
+	Service     Service          `yaml:"service" json:"service" koanf:"service"`
+	Session     Session          `yaml:"session" json:"session,omitempty" koanf:"session"`
+	AuditLog    AuditLog         `yaml:"audit_log" json:"audit_log,omitempty" koanf:"audit_log" split_words:"true"`
+	Emails      Emails           `yaml:"emails" json:"emails,omitempty" koanf:"emails"`
+	RateLimiter RateLimiter      `yaml:"rate_limiter" json:"rate_limiter,omitempty" koanf:"rate_limiter" split_words:"true"`
+	ThirdParty  ThirdParty       `yaml:"third_party" json:"third_party,omitempty" koanf:"third_party" split_words:"true"`
+	Log         LoggerConfig     `yaml:"log" json:"log,omitempty" koanf:"log"`
+	Account     Account          `yaml:"account" json:"account,omitempty" koanf:"account"`
+	Saml        config.Saml      `yaml:"saml" json:"saml,omitempty" koanf:"saml"`
 	SecurityNotifications SecurityNotifications `yaml:"security_notifications" json:"security_notifications,omitempty" koanf:"security_notifications"`
 }
 
@@ -209,6 +211,10 @@ func (c *Config) Validate() error {
 	err = c.ThirdParty.Validate()
 	if err != nil {
 		return fmt.Errorf("failed to validate third_party settings: %w", err)
+	}
+	err = c.Saml.Validate()
+	if err != nil {
+		return fmt.Errorf("failed to validate saml settings: %w", err)
 	}
 	return nil
 }
@@ -568,12 +574,12 @@ func (t *ThirdParty) Validate() error {
 func (t *ThirdParty) PostProcess() error {
 	t.AllowedRedirectURLMap = make(map[string]glob.Glob)
 	urls := append(t.AllowedRedirectURLS, t.ErrorRedirectURL)
-	for _, url := range urls {
-		g, err := glob.Compile(url, '.', '/')
+	for _, redirectUrl := range urls {
+		g, err := glob.Compile(redirectUrl, '.', '/')
 		if err != nil {
 			return fmt.Errorf("failed compile allowed redirect url glob: %w", err)
 		}
-		t.AllowedRedirectURLMap[url] = g
+		t.AllowedRedirectURLMap[redirectUrl] = g
 	}
 
 	return nil
@@ -660,6 +666,11 @@ func (c *Config) PostProcess() error {
 	err := c.ThirdParty.PostProcess()
 	if err != nil {
 		return fmt.Errorf("failed to post process third party settings: %w", err)
+	}
+
+	err = c.Saml.PostProcess()
+	if err != nil {
+		return fmt.Errorf("failed to post process saml settings: %w", err)
 	}
 
 	return nil
