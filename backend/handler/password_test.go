@@ -39,6 +39,7 @@ func (s *passwordSuite) TestPasswordHandler_Set_Create() {
 	cfg.Password.Enabled = true
 	cfg.Password.MinPasswordLength = 8
 	cfg.SecurityNotifications.Notifications.PasswordUpdate.Enabled = true
+	cfg.Passcode.Smtp.Host = s.EmailServer.SmtpHost
 	cfg.Passcode.Smtp.Port = s.EmailServer.SmtpPort
 
 	tests := []struct {

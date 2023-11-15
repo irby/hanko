@@ -216,6 +216,7 @@ func (s *notificationServiceSuite) translate(service *NotificationService, messa
 
 func (s *notificationServiceSuite) getTestConfig() *config.Config {
 	cfg := &test.DefaultConfig
+	cfg.Passcode.Smtp.Host = s.EmailServer.SmtpHost
 	cfg.Passcode.Smtp.Port = s.EmailServer.SmtpPort
 	return cfg
 }

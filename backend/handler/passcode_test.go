@@ -38,7 +38,7 @@ func (s *passcodeSuite) TestPasscodeHandler_Init() {
 
 	cfg := func() *config.Config {
 		cfg := &test.DefaultConfig
-		cfg.Passcode.Smtp.Host = "localhost"
+		cfg.Passcode.Smtp.Host = s.EmailServer.SmtpHost
 		cfg.Passcode.Smtp.Port = s.EmailServer.SmtpPort
 		return cfg
 	}
