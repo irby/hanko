@@ -115,7 +115,7 @@ func (s *passwordSuite) TestPasswordHandler_Set_Create() {
 			emailsBefore, err := s.EmailServer.GetEmails()
 			s.Require().NoError(err)
 
-			e := NewPublicRouter(cfg, s.Storage, nil)
+			e := NewPublicRouter(cfg, s.Storage, nil, nil)
 			e.ServeHTTP(rec, req)
 
 			s.Equal(currentTest.expectedCode, rec.Code)
@@ -195,7 +195,7 @@ func (s *passwordSuite) TestPasswordHandler_Login() {
 			req.Header.Set("Content-Type", "application/json")
 			rec := httptest.NewRecorder()
 
-			e := NewPublicRouter(currentTest.cfg(), s.Storage, nil)
+			e := NewPublicRouter(currentTest.cfg(), s.Storage, nil, nil)
 			e.ServeHTTP(rec, req)
 
 			if s.Equal(currentTest.expectedCode, rec.Code) {
