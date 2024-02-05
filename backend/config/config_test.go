@@ -26,6 +26,14 @@ func TestDefaultConfigSmtpParameters(t *testing.T) {
 	assert.Equal(t, cfg.Smtp.Port, "465")
 }
 
+func TestDefaultConfigSecurityNotificationParameters(t *testing.T) {
+	cfg := DefaultConfig()
+	assert.Equal(t, cfg.SecurityNotifications.Notifications.PasswordUpdate.Enabled, false)
+	assert.Equal(t, cfg.SecurityNotifications.Notifications.PrimaryEmailUpdate.Enabled, false)
+	assert.Equal(t, cfg.SecurityNotifications.Notifications.EmailCreate.Enabled, false)
+	assert.Equal(t, cfg.SecurityNotifications.Notifications.PasskeyCreate.Enabled, false)
+}
+
 func TestParseValidConfig(t *testing.T) {
 	configPath := "./config.yaml"
 	cfg, err := Load(&configPath)

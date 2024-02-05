@@ -35,6 +35,7 @@ type Config struct {
 	Log         LoggerConfig     `yaml:"log" json:"log,omitempty" koanf:"log"`
 	Account     Account          `yaml:"account" json:"account,omitempty" koanf:"account"`
 	Saml        config.Saml      `yaml:"saml" json:"saml,omitempty" koanf:"saml"`
+	SecurityNotifications SecurityNotifications `yaml:"security_notifications" json:"security_notifications,omitempty" koanf:"security_notifications"`
 }
 
 var (
@@ -169,6 +170,27 @@ func DefaultConfig() *Config {
 		Account: Account{
 			AllowDeletion: false,
 			AllowSignup:   true,
+		},
+		SecurityNotifications: SecurityNotifications{
+			Notifications: SecurityNotificationTypes{
+				PasswordUpdate: SecurityNotificationConfiguration{
+					Enabled: false,
+				},
+				PrimaryEmailUpdate: SecurityNotificationConfiguration{
+					Enabled: false,
+				},
+				EmailCreate: SecurityNotificationConfiguration{
+					Enabled: false,
+				},
+				PasskeyCreate: SecurityNotificationConfiguration{
+					Enabled: false,
+				},
+			},
+			FromEmail: Email{
+				FromAddress: "notifications@hanko.io",
+				FromName:    "Hanko",
+			},
+			NotifyAddress: "notify@hanko.io",
 		},
 	}
 }
@@ -642,6 +664,23 @@ func (p *ThirdPartyProviders) Get(provider string) *ThirdPartyProvider {
 	}
 
 	return nil
+}
+
+type SecurityNotifications struct {
+	Notifications SecurityNotificationTypes `yaml:"notifications" json:"notifications,omitempty" koanf:"notifications"`
+	FromEmail     Email                     `yaml:"from_email" json:"from_email,omitempty" koanf:"from_email"`
+	NotifyAddress string                    `yaml:"notify_address" json:"notify_address,omitempty" koanf:"notify_address"`
+}
+
+type SecurityNotificationTypes struct {
+	PasswordUpdate     SecurityNotificationConfiguration `yaml:"password_update" json:"password_update,omitempty" koanf:"password_update"`
+	PrimaryEmailUpdate SecurityNotificationConfiguration `yaml:"primary_email_update" json:"primary_email_update,omitempty" koanf:"primary_email_update"`
+	EmailCreate        SecurityNotificationConfiguration `yaml:"email_create" json:"email_create,omitempty" koanf:"email_create"`
+	PasskeyCreate      SecurityNotificationConfiguration `yaml:"passkey_create" json:"passkey_create,omitempty" koanf:"passkey_create"`
+}
+
+type SecurityNotificationConfiguration struct {
+	Enabled bool `yaml:"enabled" json:"enabled,omitempty" koanf:"enabled"`
 }
 
 func (c *Config) PostProcess() error {

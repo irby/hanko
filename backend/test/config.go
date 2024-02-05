@@ -40,4 +40,25 @@ var DefaultConfig = config.Config{
 		AllowSignup:   true,
 		AllowDeletion: false,
 	},
+	SecurityNotifications: config.SecurityNotifications{
+		Notifications: config.SecurityNotificationTypes{
+			PasswordUpdate: config.SecurityNotificationConfiguration{
+				Enabled: false,
+			},
+			PrimaryEmailUpdate: config.SecurityNotificationConfiguration{
+				Enabled: false,
+			},
+			EmailCreate: config.SecurityNotificationConfiguration{
+				Enabled: false,
+			},
+			PasskeyCreate: config.SecurityNotificationConfiguration{
+				Enabled: false,
+			},
+		},
+		FromEmail: config.Email{
+			FromAddress: "security@hanko.io",
+			FromName:    "Hanko Security",
+		},
+		NotifyAddress: "help@hanko.io",
+	},
 }

@@ -16,3 +16,17 @@ secrets:
     - abcedfghijklmnopqrstuvwxyz
 service:
   name: Hanko Authentication Service
+security_notifications:
+  notifications:
+    password_update:
+      enabled: false
+    primary_email_update:
+      enabled: false
+    email_create:
+      enabled: false
+    passkey_create:
+      enabled: false
+  from_email:
+    from_address: security@hanko.io
+    from_name: Hanko Account Security
+  notify_address: helpdesk@hanko.io
