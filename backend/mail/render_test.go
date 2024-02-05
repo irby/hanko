@@ -97,6 +97,42 @@ func TestRenderer_Translate(t *testing.T) {
 			},
 			Expected: "Use passcode 123456 to sign in to Test Service",
 		},
+		{
+			Name:      "Translate email_subject_password_update",
+			MessageID: "email_subject_password_update",
+			Lang:      "en",
+			Data: map[string]interface{}{
+				"ServiceName": "Test Service",
+			},
+			Expected: "Your Test Service account password has been updated",
+		},
+		{
+			Name:      "Translate email_subject_primary_email_update",
+			MessageID: "email_subject_primary_email_update",
+			Lang:      "en",
+			Data: map[string]interface{}{
+				"ServiceName": "Test Service",
+			},
+			Expected: "Your Test Service primary email address has been updated",
+		},
+		{
+			Name:      "Translate email_subject_email_create",
+			MessageID: "email_subject_email_create",
+			Lang:      "en",
+			Data: map[string]interface{}{
+				"ServiceName": "Test Service",
+			},
+			Expected: "A new email address has been registered to your Test Service account",
+		},
+		{
+			Name:      "Translate email_subject_passkey_create",
+			MessageID: "email_subject_passkey_create",
+			Lang:      "en",
+			Data: map[string]interface{}{
+				"ServiceName": "Test Service",
+			},
+			Expected: "A new passkey has been registered to your Test Service account",
+		},
 	}
 
 	for _, test := range tests {
